@@ -7,12 +7,24 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Microsoft YaHei", sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
         .header { text-align: center; margin: 30px 0; color: #2c3e50; }
+        .header h1 { margin-bottom: 10px; }
+        .user-info { text-align: right; margin-bottom: 20px; color: #7f8c8d; }
+        .user-info a { color: #3498db; text-decoration: none; margin-left: 10px; }
         .publish-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
-        .publish-box input, .publish-box textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        .publish-box h3 { margin-bottom: 15px; color: #2c3e50; }
+        .publish-box input, .publish-box textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; }
+        .publish-box input:focus, .publish-box textarea:focus { outline: none; border-color: #3498db; }
         .publish-box button { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .publish-box button:hover { background: #2980b9; }
         .article-item { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .article-item h3 a { color: #2c3e50; text-decoration: none; }
+        .article-item h3 a:hover { color: #3498db; }
         .article-meta { color: #7f8c8d; font-size: 14px; margin-top: 10px; }
+        .pagination { text-align: center; margin: 30px 0; }
+        .pagination a { display: inline-block; padding: 8px 16px; background: white; color: #3498db; text-decoration: none; border-radius: 4px; margin: 0 5px; }
+        .pagination a:hover { background: #3498db; color: white; }
+        .pagination .current { background: #3498db; color: white; padding: 8px 16px; border-radius: 4px; margin: 0 5px; }
+        .pagination .disabled { background: #ecf0f1; color: #bdc3c7; padding: 8px 16px; border-radius: 4px; margin: 0 5px; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -20,6 +32,18 @@
         <h1>📝 我的个人博客</h1>
         <p>Docker + Node.js + MySQL + Redis 构建</p>
     </div>
+
+    <div class="user-info">
+        <% if (isAuthenticated) { %>
+            欢迎，<strong><%= username %></strong>
+            <a href="/logout">退出登录</a>
+        <% } else { %>
+            <a href="/login">登录</a>
+            <a href="/register">注册</a>
+        <% } %>
+    </div>
+
+    <% if (isAuthenticated) { %>
     <div class="publish-box">
         <h3>发布新文章</h3>
         <form action="/publish" method="POST">
@@ -28,8 +52,10 @@
             <button type="submit">发布</button>
         </form>
     </div>
+    <% } %>
+
     <div class="article-list">
-        <h3>文章列表</h3>
+        <h3 style="margin-bottom: 20px; color: #2c3e50;">文章列表</h3>
         <% if (articles.length === 0) { %>
             <p>暂无文章，快去发布第一篇吧~</p>
         <% } else { %>
@@ -37,10 +63,28 @@
                 <div class="article-item">
                     <h3><a href="/article/<%= article.id %>"><%= article.title %></a></h3>
                     <div class="article-meta">
-                        阅读量：<%= article.view_count %> | 发布时间：<%= article.created_at.toLocaleString() %>
+                        作者：<%= article.author_name || '未知' %> |
+                        阅读量：<%= article.view_count %> |
+                        发布时间：<%= article.created_at.toLocaleString() %>
                     </div>
                 </div>
             <% }) %>
+        <% } %>
+    </div>
+
+    <div class="pagination">
+        <% if (currentPage > 1) { %>
+            <a href="/?page=<%= currentPage - 1 %>">上一页</a>
+        <% } else { %>
+            <span class="disabled">上一页</span>
+        <% } %>
+
+        <span class="current"><%= currentPage %> / <%= totalPages %></span>
+
+        <% if (currentPage < totalPages) { %>
+            <a href="/?page=<%= currentPage + 1 %>">下一页</a>
+        <% } else { %>
+            <span class="disabled">下一页</span>
         <% } %>
     </div>
 </body>
