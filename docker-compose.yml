@@ -5,13 +5,13 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_ROOT_HOST: '%'
+      MYSQL_ROOT_HOST: "%"
     volumes:
       - ./mysql-data:/var/lib/mysql
     networks:
       - blog-net
     restart: always
-    cpus: '1.0'
+    cpus: "1.0"
     mem_limit: 512M
     logging:
       driver: "json-file"
@@ -19,7 +19,16 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-uroot",
+          "-p${MYSQL_ROOT_PASSWORD}",
+        ]
       interval: 3s
       timeout: 5s
       retries: 10
@@ -33,7 +42,7 @@ services:
       - blog-net
     restart: always
     command: redis-server --save 900 1 --save 300 10 --save 60 10000 --appendonly no
-    cpus: '0.5'
+    cpus: "0.5"
     mem_limit: 256M
     logging:
       driver: "json-file"
@@ -59,7 +68,7 @@ services:
     networks:
       - blog-net
     restart: always
-    cpus: '0.5'
+    cpus: "0.5"
     mem_limit: 256M
     logging:
       driver: "json-file"
@@ -86,7 +95,7 @@ services:
     networks:
       - blog-net
     restart: always
-    cpus: '0.2'
+    cpus: "0.2"
     mem_limit: 128M
     logging:
       driver: "json-file"
@@ -104,9 +113,9 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)"
     networks:
       - blog-net
     restart: always
@@ -121,10 +130,10 @@ services:
     image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/prom/mysqld-exporter:v0.17.2
     container_name: mysql_exporter
     command:
-      - '--mysqld.address=db:3306'
-      - '--mysqld.username=root'
-      - '--mysqld.password=zqq@qqz'
-      - '--mysqld.database=my_blog'
+      - "--mysqld.address=db:3306"
+      - "--mysqld.username=root"
+      - "--mysqld.password=${MYSQL_ROOT_PASSWORD}"
+      - "--mysqld.database=my_blog"
     ports:
       - "127.0.0.1:9104:9104"
     depends_on:
@@ -138,6 +147,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    env_file:
+      - .env
 
   redis-exporter:
     image: oliver006/redis_exporter:v1.58.0
@@ -168,11 +179,11 @@ services:
       - ./prometheus/data:/prometheus
     user: "65534:65534"
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=30d'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=30d"
     networks:
       - blog-net
     restart: always
