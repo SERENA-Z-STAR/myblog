@@ -1,0 +1,160 @@
+// 【关键】代码最开头加载.env文件，必须放在第一行
+require('dotenv').config();
+
+const express = require('express');
+const mysql = require('mysql2/promise');
+const redis = require('redis');
+const bodyParser = require('body-parser');
+const app = express();
+
+// 所有配置都从环境变量读取，无任何硬编码
+const port = process.env.APP_PORT || 3000;
+const mysqlConfig = {
+  host: 'db',
+  user: 'root',
+  password: process.env.MYSQL_ROOT_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 10,
+};
+const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
+
+// 配置模板引擎
+app.set('view engine', 'ejs');
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// 1. MySQL连接（带10次重试）
+let pool;
+async function initMySQL() {
+  const maxRetries = 10;
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      pool = mysql.createPool(mysqlConfig);
+      // 测试连接
+      await pool.query('SELECT 1');
+      console.log('✅ MySQL连接成功！');
+      return;
+    } catch (e) {
+      retries++;
+      console.log(`⚠️ MySQL连接失败，重试 ${retries}/${maxRetries}，错误：${e.message}`);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  }
+  throw new Error('MySQL连接失败，超过最大重试次数');
+}
+
+// 2. Redis连接（带10次重试）
+let redisClient;
+async function initRedis() {
+  const maxRetries = 10;
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      redisClient = redis.createClient({ url: redisUrl });
+      redisClient.on('error', (err) => console.log('Redis连接错误:', err));
+      await redisClient.connect();
+      console.log('✅ Redis连接成功！');
+      return;
+    } catch (e) {
+      retries++;
+      console.log(`⚠️ Redis连接失败，重试 ${retries}/${maxRetries}，错误：${e.message}`);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  }
+  throw new Error('Redis连接失败，超过最大重试次数');
+}
+
+// 3. 初始化数据库表
+async function initDB() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS articles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        view_count INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    // 插入测试文章
+    await pool.query(`
+      INSERT IGNORE INTO articles (id, title, content) 
+      VALUES (1, '我的第一篇博客', 'Hello World！这是从MySQL数据库中读取的内容，Redis已经准备好加速你的访问啦~')
+    `);
+    console.log('✅ 数据库表初始化完成');
+  } catch (e) {
+    console.error('❌ 数据库初始化失败:', e);
+  }
+}
+
+// --- API接口 ---
+// 首页
+app.get('/', async (req, res) => {
+  try {
+    const cacheKey = 'home_article_list';
+    let cacheData = await redisClient.get(cacheKey);
+
+    if (cacheData) {
+      console.log('✅ 命中Redis缓存');
+      res.render('index', { articles: JSON.parse(cacheData) });
+    } else {
+      console.log('⚠️ 查询MySQL');
+      const [articles] = await pool.query('SELECT * FROM articles ORDER BY id DESC');
+      await redisClient.setEx(cacheKey, 60, JSON.stringify(articles));
+      res.render('index', { articles });
+    }
+  } catch (e) {
+    console.error('首页错误:', e);
+    res.status(500).send('服务器错误');
+  }
+});
+
+// 文章详情页
+app.get('/article/:id', async (req, res) => {
+  try {
+    const articleId = req.params.id;
+    await pool.query('UPDATE articles SET view_count = view_count + 1 WHERE id = ?', [articleId]);
+    const [rows] = await pool.query('SELECT * FROM articles WHERE id = ?', [articleId]);
+    if (rows.length === 0) return res.status(404).send('文章不存在');
+    
+    const viewerKey = `article_viewer:${articleId}:${req.ip}`;
+    const isNewViewer = await redisClient.setNX(viewerKey, '1');
+    if (isNewViewer) await redisClient.expire(viewerKey, 86400);
+
+    res.render('article', { article: rows[0], isNewViewer });
+  } catch (e) {
+    console.error('文章详情错误:', e);
+    res.status(500).send('服务器错误');
+  }
+});
+
+// 发布文章
+app.post('/publish', async (req, res) => {
+  try {
+    const { title, content } = req.body;
+    await pool.query('INSERT INTO articles (title, content) VALUES (?, ?)', [title, content]);
+    await redisClient.del('home_article_list');
+    res.redirect('/');
+  } catch (e) {
+    console.error('发布文章错误:', e);
+    res.status(500).send('发布失败');
+  }
+});
+
+// 启动服务：强制监听0.0.0.0，保证外部容器能访问
+async function startServer() {
+  try {
+    await initMySQL();
+    await initRedis();
+    await initDB();
+    app.listen(port, '0.0.0.0', () => {
+      console.log(`🎉 博客后端服务启动成功，端口: ${port}，监听所有网卡`);
+    });
+  } catch (e) {
+    console.error('❌ 服务启动失败:', e);
+    process.exit(1);
+  }
+}
+
+startServer();

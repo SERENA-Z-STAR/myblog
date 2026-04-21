@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 15s  # 每15秒采集一次指标
+
+scrape_configs:
+  # 采集宿主机指标（CPU、内存、磁盘等）
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # 采集 MySQL 指标（连接数、查询数、慢查询等）
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysql-exporter:9104']
+
+  # 采集 Redis 指标（内存使用、连接数、命中率等）
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']

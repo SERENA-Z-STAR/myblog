@@ -1,0 +1,21 @@
+# 敏感配置文件，绝对禁止提交
+.env
+
+# 数据库持久化数据
+mysql-data/
+redis-data/
+
+# Node.js依赖
+node_modules/
+
+# 日志文件
+*.log
+
+# Docker构建缓存
+.dockerignore
+
+# 备份文件
+*.bak
+prometheus/data/
+grafana/data/
+nginx/logs/

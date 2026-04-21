@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>我的个人博客</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .header { text-align: center; margin: 30px 0; color: #2c3e50; }
+        .publish-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .publish-box input, .publish-box textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        .publish-box button { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .article-item { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .article-item h3 a { color: #2c3e50; text-decoration: none; }
+        .article-meta { color: #7f8c8d; font-size: 14px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📝 我的个人博客</h1>
+        <p>Docker + Node.js + MySQL + Redis 构建</p>
+    </div>
+    <div class="publish-box">
+        <h3>发布新文章</h3>
+        <form action="/publish" method="POST">
+            <input type="text" name="title" placeholder="文章标题" required>
+            <textarea name="content" placeholder="文章内容" rows="5" required></textarea>
+            <button type="submit">发布</button>
+        </form>
+    </div>
+    <div class="article-list">
+        <h3>文章列表</h3>
+        <% if (articles.length === 0) { %>
+            <p>暂无文章，快去发布第一篇吧~</p>
+        <% } else { %>
+            <% articles.forEach(article => { %>
+                <div class="article-item">
+                    <h3><a href="/article/<%= article.id %>"><%= article.title %></a></h3>
+                    <div class="article-meta">
+                        阅读量：<%= article.view_count %> | 发布时间：<%= article.created_at.toLocaleString() %>
+                    </div>
+                </div>
+            <% }) %>
+        <% } %>
+    </div>
+</body>
+</html>

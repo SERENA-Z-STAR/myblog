@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title><%= article.title %></title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .back-btn { margin-bottom: 20px; display: inline-block; color: #3498db; text-decoration: none; }
+        .article-detail { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .article-title { margin-bottom: 20px; color: #2c3e50; }
+        .article-meta { color: #7f8c8d; font-size: 14px; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .article-content { line-height: 1.8; font-size: 16px; color: #34495e; }
+        .new-viewer-tag { color: #27ae60; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-btn">← 返回首页</a>
+    <div class="article-detail">
+        <h1 class="article-title"><%= article.title %></h1>
+        <div class="article-meta">
+            总阅读量：<%= article.view_count %> | 发布时间：<%= article.created_at.toLocaleString() %>
+            <% if (isNewViewer) { %>
+                <span class="new-viewer-tag"> | 欢迎新读者！</span>
+            <% } %>
+        </div>
+        <div class="article-content"><%= article.content %></div>
+    </div>
+</body>
+</html>

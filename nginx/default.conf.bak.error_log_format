@@ -1,0 +1,59 @@
+# 限流区域定义：基于客户端IP，每秒10个请求，内存分配10MB
+limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=publish:10m rate=2r/s;
+
+# 上游服务定义（比直接 proxy_pass 更灵活，支持负载均衡）
+upstream blog_app {
+    server app:3000;
+}
+
+server {
+    listen 80;
+    server_name zqqqz.xyz localhost;
+
+    # 安全响应头（核心加固）
+    add_header X-Frame-Options "SAMEORIGIN" always;        # 防止被其他网站iframe嵌入（点击劫持防护）
+    add_header X-Content-Type-Options "nosniff" always;    # 防止浏览器猜测MIME类型
+    add_header X-XSS-Protection "1; mode=block" always;    # 启用浏览器XSS过滤器
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;  # 控制Referer泄露
+
+    # 访问日志格式（结构化，方便后续日志分析）
+    log_format main '$remote_addr - $remote_user [$time_local] '
+                    '"$request" $status $body_bytes_sent '
+                    '"$http_referer" "$http_user_agent" '
+                    'rt=$request_time';
+
+    access_log /var/log/nginx/access.log main;
+    error_log  /var/log/nginx/error.log warn;
+
+    # 普通页面：通用限流
+    location / {
+        limit_req zone=general burst=20 nodelay;
+        proxy_pass http://blog_app;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 发布接口：严格限流（防止刷接口）
+    location /publish {
+        limit_req zone=publish burst=5 nodelay;
+        proxy_pass http://blog_app;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # 健康检查：不限流，供监控探活
+    location /health {
+        proxy_pass http://blog_app;
+        access_log off;  # 健康检查太频繁，不打日志
+    }
+
+    # 禁止访问隐藏文件（如 .git、.env）
+    location ~ /\. {
+        deny all;
+        return 404;
+    }
+}
