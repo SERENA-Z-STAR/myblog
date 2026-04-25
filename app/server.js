@@ -288,12 +288,21 @@ app.get("/", async (req, res) => {
     const cacheKey = `home_article_list:page:${page}`;
     const cacheData = await redisClient.get(cacheKey);
 
-    let articles, totalCount;
+    let articles,
+      totalCount,
+      totalArticles,
+      totalViews,
+      totalUsers,
+      recentArticles;
 
     if (cacheData) {
       const cached = JSON.parse(cacheData);
       articles = cached.articles;
       totalCount = cached.totalCount;
+      totalArticles = cached.totalArticles;
+      totalViews = cached.totalViews;
+      totalUsers = cached.totalUsers;
+      recentArticles = cached.recentArticles;
     } else {
       [articles] = await pool.query(
         `
@@ -311,10 +320,38 @@ app.get("/", async (req, res) => {
       );
       totalCount = total;
 
+      // 获取统计数据
+      [[{ total: totalArticles }]] = await pool.query(
+        "SELECT COUNT(*) as total FROM articles",
+      );
+      [[{ total: totalViews }]] = await pool.query(
+        "SELECT SUM(view_count) as total FROM articles",
+      );
+      [[{ total: totalUsers }]] = await pool.query(
+        "SELECT COUNT(*) as total FROM users",
+      );
+
+      // 获取最新文章
+      [recentArticles] = await pool.query(
+        `
+        SELECT a.id, a.title
+        FROM articles a
+        ORDER BY a.id DESC
+        LIMIT 5
+      `,
+      );
+
       await redisClient.setEx(
         cacheKey,
         60,
-        JSON.stringify({ articles, totalCount }),
+        JSON.stringify({
+          articles,
+          totalCount,
+          totalArticles,
+          totalViews,
+          totalUsers,
+          recentArticles,
+        }),
       );
     }
 
@@ -325,6 +362,11 @@ app.get("/", async (req, res) => {
       totalPages,
       isAuthenticated: isAuthenticated(req),
       username: req.session.username,
+      userId: req.session.userId,
+      totalArticles,
+      totalViews,
+      totalUsers,
+      recentArticles,
     });
   } catch (e) {
     console.error("[App] 首页错误:", e.message);
