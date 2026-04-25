@@ -129,11 +129,11 @@ services:
     # 换成官方镜像，和连接串完全兼容
     image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/prom/mysqld-exporter:v0.17.2
     container_name: mysql_exporter
+    volumes:
+      - ./.my.cnf:/etc/.my.cnf:ro
+    # 明确告诉它去哪里读配置
     command:
-      - "--mysqld.address=db:3306"
-      - "--mysqld.username=root"
-      - "--mysqld.password=${MYSQL_ROOT_PASSWORD}"
-      - "--mysqld.database=my_blog"
+      - "--config.my-cnf=/etc/.my.cnf"
     ports:
       - "127.0.0.1:9104:9104"
     depends_on:
@@ -202,8 +202,11 @@ services:
       - ./grafana/data:/var/lib/grafana
     user: "472:472"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
-      GF_USERS_ALLOW_SIGN_UP: "false"
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://192.168.80.133:8080/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+
     depends_on:
       - prometheus
     networks:
